@@ -35,21 +35,21 @@
           <p class="fragment">
             Kokkos supports multidimensional data structures via Views
           </p>
-          <pre class="fragment"><code data-trim data-line-numbers><script type="text/template">
+          <pre class="fragment"><code data-trim data-line-numbers class="language-cpp"><script type="text/template">
             // 4D View of doubles
             Kokkos::View<double****> view4d("view4d", dim1, dim2, dim3, dim4);
           </script></code></pre>
           <p class="fragment">
             And parallel iteration spaces via <code>MDRangePolicy</code>
           </p>
-          <pre class="fragment"><code data-trim data-line-numbers><script type="text/template">
+          <pre class="fragment"><code data-trim data-line-numbers class="language-cpp"><script type="text/template">
             // 4D iteration space
             Kokkos::MDRangePolicy<Kokkos::Rank<4>> policy4d({0,0,0,0}, {dim1, dim2, dim3, dim4});
           </script></code></pre>
           <p class="fragment">
             Finally, perform kernel execution via a parallel dispatch
           </p>
-          <pre class="fragment"><code data-trim data-line-numbers><script type="text/template">
+          <pre class="fragment"><code data-trim data-line-numbers class="language-cpp"><script type="text/template">
             // C = A + B for 4D Views
             Kokkos::parallel_for("4d_add", policy4d, 
             KOKKOS_LAMBDA(const int i, const int j, const int k, const int l) {
@@ -81,7 +81,7 @@
           <p class="fragment">
             This is done via seting a "tile size" for each dimension of the iteration space
           </p>
-          <pre class="fragment"><code data-trim data-line-numbers="4"><script type="text/template">
+          <pre class="fragment"><code data-trim data-line-numbers="4" class="language-cpp"><script type="text/template">
             // 4D iteration space with tile sizes
             Kokkos::MDRangePolicy<Kokkos::Rank<4>> policy4d(
               {0,0,0,0}, {dim1, dim2, dim3, dim4},
@@ -107,20 +107,109 @@
           <p class="fragment">
             Should be able to drop and replace existing code
           </p>
-          <pre class="fragment"><code data-trim data-line-numbers="2"><script type="text/template">
+          <pre class="fragment"><code data-trim data-line-numbers="2" class="language-cpp"><script type="text/template">
             // original Kokkos dispatch
             Kokkos::parallel_for("4d_add", policy4d, 
               KOKKOS_LAMBDA(const int i, const int j, const int k, const int l) {
                 C(i,j,k,l) = A(i,j,k,l) + B(i,j,k,l);
               });
           </script></code></pre>
-          <pre class="fragment"><code data-trim data-line-numbers="2"><script type="text/template">
+          <pre class="fragment"><code data-trim data-line-numbers="2" class="language-cpp"><script type="text/template">
             // KTune dispatch
             KTune::parallel_for("4d_add", policy4d, 
               KOKKOS_LAMBDA(const int i, const int j, const int k, const int l) {
                 C(i,j,k,l) = A(i,j,k,l) + B(i,j,k,l);
               });
           </script></code></pre>
+        </section>
+        <section>
+          <section>
+            <h3>How is the performance?</h3>
+            <img class="fragment" src="plots/stream_benchmark_epyc7742_tuned_vs_untuned.png" width="800px"/>
+          </section>
+          <section>
+            <h3>So do we reach rank 1 performance?</h3>
+            <img class="fragment" src="plots/stream_benchmark_epyc7742_tuned_all_ranks_add.png" width="800px"/>
+            <p class="fragment">
+              Almost!
+            </p>
+            <p class="fragment">
+              There will always be some overheads at higher ranks
+            </p>
+            <p class="fragment">
+              But in the streaming region we saturate the bandwidth (rank < 5)
+            </p>
+          </section>
+        </section>
+        <section>
+          <section>
+            <h3>How about on the gpu?</h3>
+            <img class="fragment" src="plots/stream_benchmark_gpu_all_ranks_add.png" width="800px"/>
+          </section>
+          <section>
+            <p>zooming in...</p>
+            <img class="fragment" src="plots/stream_benchmark_gpu_all_ranks_add_zoomed.png" width="800px"/>
+          </section>
+        </section>
+        <section>
+          <h3>An Interesting Use Case : AoS</h3>
+          <p class="fragment">
+            Imagine a scenario where we have a <code>N x M</code> matrix at every site
+          </p>
+          <pre class="fragment"><code data-trim data-line-numbers class="language-cpp"><script type="text/template">
+            // 4D View representing a field of N x M matrices
+            template <typename RT, size_t N, size_t M>
+            using ViewMatrixField4D = Kokkos::View<RT****[N][M]>;
+          </script></code></pre>
+          <p class="fragment">
+            Writing complex kernels over such data structures is tedious
+          </p>
+          <p class="fragment">
+            However, with an Array-of-Structs (AoS) layout, we can simplify the kernel code
+          </p>
+          <pre class="fragment"><code data-trim data-line-numbers class="language-cpp"><script type="text/template">
+            // N x M matrix type
+            template <typename RT, size_t N, size_t M>
+            using Matrix = Kokkos::Array<Kokkos::Array<RT, M>, N>;
+            // 4D View of matrices
+            template <typename RT, size_t N, size_t M>
+            using ViewMatrixField4D_AoS = Kokkos::View<Matrix<RT,N,M>****>;
+          </script></code></pre>
+          <p class="fragment">
+            And can easily use operator overloads
+          </p>
+          <pre class="fragment"><code data-trim data-line-numbers class="language-cpp"><script type="text/template">
+            template <typename RT, size_t N, size_t K, size_t M>
+            KOKKOS_FORCEINLINE_FUNCTION Matrix<RT, N, M>
+            operator*(const Matrix<RT, N, K> &A, const Matrix<RT, K, M> &B)
+          </script></code></pre>
+        </section>
+
+        <section>
+          More Benchmarks....
+        </section>
+        <section>
+          <h3>How to integrate KTune in your code</h3>
+          <p class="fragment">
+            Can add as a third-party library (with git submodule for example)
+          </p>
+          <pre class="fragment"><code data-trim data-line-numbers class="language-cmake"><script type="text/template">
+            add_subdirectory(path/to/KTune)
+            target_link_libraries(your_target PRIVATE KTune::KTune)
+          </script></code></pre>
+          <p class="fragment">
+            or simply copy the contents of <code>include/KTune</code> to your project include directory
+          </p>
+          <p class="fragment">
+            Include the main header where you want to use KTune
+          </p>
+          <pre class="fragment"><code data-trim data-line-numbers class="language-cpp"><script type="text/template">
+            #include "KTune/KTune.hpp"
+          </script></code></pre>
+          <p class="fragment">
+            And replace <code>Kokkos::parallel_for</code> and <code>Kokkos::parallel_reduce</code> calls with <code>KTune::parallel_for</code> and <code>KTune::parallel_reduce</code>
+          </p>
+          <h1 class="fragment">Wanna try it out? -- Contact Us!</h1>
         </section>
 			</div>
 		</div>
