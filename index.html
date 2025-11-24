@@ -152,39 +152,58 @@
           </section>
         </section>
         <section>
-          <h3>An Interesting Use Case : AoS</h3>
-          <p class="fragment">
-            Imagine a scenario where we have a <code>N x M</code> matrix at every site
-          </p>
-          <pre class="fragment"><code data-trim data-line-numbers class="language-cpp"><script type="text/template">
-            // 4D View representing a field of N x M matrices
-            template <typename RT, size_t N, size_t M>
-            using ViewMatrixField4D = Kokkos::View<RT****[N][M]>;
-          </script></code></pre>
-          <p class="fragment">
-            Writing complex kernels over such data structures is tedious
-          </p>
-          <p class="fragment">
-            However, with an Array-of-Structs (AoS) layout, we can simplify the kernel code
-          </p>
-          <pre class="fragment"><code data-trim data-line-numbers class="language-cpp"><script type="text/template">
-            // N x M matrix type
-            template <typename RT, size_t N, size_t M>
-            using Matrix = Kokkos::Array<Kokkos::Array<RT, M>, N>;
-            // 4D View of matrices
-            template <typename RT, size_t N, size_t M>
-            using ViewMatrixField4D_AoS = Kokkos::View<Matrix<RT,N,M>****>;
-          </script></code></pre>
-          <p class="fragment">
-            And can easily use operator overloads
-          </p>
-          <pre class="fragment"><code data-trim data-line-numbers class="language-cpp"><script type="text/template">
-            template <typename RT, size_t N, size_t K, size_t M>
-            KOKKOS_FORCEINLINE_FUNCTION Matrix<RT, N, M>
-            operator*(const Matrix<RT, N, K> &A, const Matrix<RT, K, M> &B)
-          </script></code></pre>
+          <section>
+            <h3>An Interesting Use Case : AoS</h3>
+            <p class="fragment">
+              Imagine a scenario where we have a <code>N x M</code> matrix at every site
+            </p>
+            <pre class="fragment"><code data-trim data-line-numbers class="language-cpp"><script type="text/template">
+              // 4D View representing a field of N x M matrices
+              template <typename RT, size_t N, size_t M>
+              using ViewMatrixField4D = Kokkos::View<RT****[N][M]>;
+            </script></code></pre>
+            <p class="fragment">
+              Writing complex kernels over such data structures is tedious
+            </p>
+            <p class="fragment">
+              However, with an Array-of-Structs (AoS) layout, we can simplify the kernel code
+            </p>
+            <pre class="fragment"><code data-trim data-line-numbers class="language-cpp"><script type="text/template">
+              // N x M matrix type
+              template <typename RT, size_t N, size_t M>
+              using Matrix = Kokkos::Array<Kokkos::Array<RT, M>, N>;
+              // 4D View of matrices
+              template <typename RT, size_t N, size_t M>
+              using ViewMatrixField4D_AoS = Kokkos::View<Matrix<RT,N,M>****>;
+            </script></code></pre>
+            <p class="fragment">
+              And can easily use operator overloads
+            </p>
+            <pre class="fragment"><code data-trim data-line-numbers class="language-cpp"><script type="text/template">
+              template <typename RT, size_t N, size_t K, size_t M>
+              KOKKOS_FORCEINLINE_FUNCTION Matrix<RT, N, M>
+              operator*(const Matrix<RT, N, K> &A, const Matrix<RT, K, M> &B)
+            </script></code></pre>
+          </section>
+          <section>
+            <p>
+              However, such a layout is not optimal on the gpu
+            </p>
+            <img class="fragment" src="plots/mm_benchmark_a100_AoS_vs_Views_untuned.png" width="720px"/>
+          </section>
         </section>
-
+        <section>
+          <section>
+            <h3>But when we Tune...</h3>
+            <img class="fragment" src="plots/mm_benchmark_a100_AoS_vs_Views_tuned.png" width="720px"/>
+          </section>
+          <section>
+            <p>
+              Good improvements also on HIP
+            </p>
+            <img class="fragment" src="plots/mm_benchmark_mi250_AoS_tuned_vs_untuned.png" width="720px"/>
+          </section>
+        </section>
         <section>
           More Benchmarks....
         </section>

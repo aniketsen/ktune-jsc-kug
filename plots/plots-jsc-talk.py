@@ -188,11 +188,11 @@ for ii in range(2):
     N = NS[ii]
     K = KS[ii]
     M = MS[ii]
-    dat_AoS = np.genfromtxt(f'/home/sen/projects/ktune_benchmarks/qbig/mm-AoS/mm_AoS_N{N}M{M}K{K}_{ARCH}_rank{rank}_untuned.dat', delimiter=',', dtype=float)
-    dat_views = np.genfromtxt(f'/home/sen/projects/ktune_benchmarks/qbig/mm-views/mm_views_N{N}M{M}K{K}_{ARCH}_rank{rank}_untuned.dat', delimiter=',', dtype=float)
+    dat_AoS = np.genfromtxt(f'/home/sen/projects/ktune_benchmarks/jureca/mm-AoS/mm_AoS_N{N}K{K}M{M}_{ARCH}_rank{rank}_untuned.dat', delimiter=',', dtype=float)
+    dat_views = np.genfromtxt(f'/home/sen/projects/ktune_benchmarks/jureca/mm-views/mm_views_N{N}K{K}M{M}_{ARCH}_rank{rank}_untuned.dat', delimiter=',', dtype=float)
     ax = axs.flatten()[pi]
     ax.plot(dat_AoS[:,0]**rank*(N*K+K*M+N*M)*8*1e-9, dat_AoS[:,1], '^--', label='AoS Untuned')
-    ax.plot(dat_views[:,0]**rank*(N*K+K*M+N*M)*8*1e-9, dat_views[:,1], 'x--', label='Views Untuned')
+    ax.plot(dat_views[:,0]**rank*(N*K+K*M+N*M)*8*1e-9, dat_views[:,1], 'v--', label='Views Untuned')
     ax.grid(True, linestyle='--', linewidth=0.5)
     ax.legend()
     ax.set_xlabel('Working Size (GB)')
@@ -201,7 +201,56 @@ for ii in range(2):
     ax.set_title(f'{ARCH} rank {rank} N{N}K{K}M{M}')
     pi += 1
     plt.tight_layout()
-plt.savefig(f'mm_benchmark_{ARCH}_AoS_vs_Views.png', dpi=300)
+plt.savefig(f'mm_benchmark_{ARCH}_AoS_vs_Views_untuned.png', dpi=300)
+
+pi = 0
+fig, axs = plt.subplots(2, 3, figsize=(10, 8))
+for ii in range(2):
+  for rank in RANKS:
+    N = NS[ii]
+    K = KS[ii]
+    M = MS[ii]
+    dat_AoS_tuned = np.genfromtxt(f'/home/sen/projects/ktune_benchmarks/jureca/mm-AoS/mm_AoS_N{N}K{K}M{M}_{ARCH}_rank{rank}_tuned.dat', delimiter=',', dtype=float)
+    dat_AoS_untuned = np.genfromtxt(f'/home/sen/projects/ktune_benchmarks/jureca/mm-AoS/mm_AoS_N{N}K{K}M{M}_{ARCH}_rank{rank}_untuned.dat', delimiter=',', dtype=float)
+    dat_views_tuned = np.genfromtxt(f'/home/sen/projects/ktune_benchmarks/jureca/mm-views/mm_views_N{N}K{K}M{M}_{ARCH}_rank{rank}_tuned.dat', delimiter=',', dtype=float)
+    dat_views_untuned = np.genfromtxt(f'/home/sen/projects/ktune_benchmarks/jureca/mm-views/mm_views_N{N}K{K}M{M}_{ARCH}_rank{rank}_untuned.dat', delimiter=',', dtype=float)
+    ax = axs.flatten()[pi]
+    ax.plot(dat_AoS_tuned[:,0]**rank*(N*K+K*M+N*M)*8*1e-9, dat_AoS_tuned[:,1], '^--', label='AoS Tuned')
+    ax.plot(dat_AoS_untuned[:,0]**rank*(N*K+K*M+N*M)*8*1e-9, dat_AoS_untuned[:,1], 'x--', label='AoS Untuned')
+    ax.plot(dat_views_tuned[:,0]**rank*(N*K+K*M+N*M)*8*1e-9, dat_views_tuned[:,1], '^--', label='Views Tuned')
+    ax.plot(dat_views_untuned[:,0]**rank*(N*K+K*M+N*M)*8*1e-9, dat_views_untuned[:,1], 'x--', label='Views Untuned')
+    ax.grid(True, linestyle='--', linewidth=0.5)
+    ax.legend()
+    ax.set_xlabel('Working Size (GB)')
+    ax.set_ylabel('Bandwidth (GB/s)')
+    ax.set_xscale('log')
+    ax.set_title(f'{ARCH} rank {rank} N{N}K{K}M{M}')
+    pi += 1
+    plt.tight_layout()
+plt.savefig(f'mm_benchmark_{ARCH}_AoS_vs_Views_tuned.png', dpi=300)
+
+ARCH = "mi250"
+pi = 0
+fig, axs = plt.subplots(2, 3, figsize=(10, 8))
+for ii in range(2):
+  for rank in RANKS:
+    N = NS[ii]
+    K = KS[ii]
+    M = MS[ii]
+    dat_AoS = np.genfromtxt(f'/home/sen/projects/ktune_benchmarks/lumi/mm-AoS/mm_AoS_N{N}M{M}K{K}_{ARCH}_rank{rank}_tuned.dat', delimiter=',', dtype=float)
+    dat_views = np.genfromtxt(f'/home/sen/projects/ktune_benchmarks/lumi/mm-AoS/mm_AoS_N{N}M{M}K{K}_{ARCH}_rank{rank}_untuned.dat', delimiter=',', dtype=float)
+    ax = axs.flatten()[pi]
+    ax.plot(dat_AoS[:,0]**rank*(N*K+K*M+N*M)*8*1e-9, dat_AoS[:,1], '^--', label='AoS Tuned')
+    ax.plot(dat_views[:,0]**rank*(N*K+K*M+N*M)*8*1e-9, dat_views[:,1], 'x--', label='AoS Untuned')
+    ax.grid(True, linestyle='--', linewidth=0.5)
+    ax.legend()
+    ax.set_xlabel('Working Size (GB)')
+    ax.set_ylabel('Bandwidth (GB/s)')
+    ax.set_xscale('log')
+    ax.set_title(f'{ARCH} rank {rank} N{N}K{K}M{M}')
+    pi += 1
+    plt.tight_layout()
+plt.savefig(f'mm_benchmark_{ARCH}_AoS_tuned_vs_untuned.png', dpi=300)
 
 # for ARCH in ARCHS:
 #   of = matplotlib.backends.backend_pdf.PdfPages(f'stream_benchmark_{ARCH}_comparison.pdf')
