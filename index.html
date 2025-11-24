@@ -2,7 +2,7 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
 
 		<title>reveal.js</title>
 
@@ -12,12 +12,115 @@
 
 		<!-- Theme used for syntax highlighted code -->
 		<link rel="stylesheet" href="plugin/highlight/monokai.css">
+		<style>
+			.reveal .slides {
+				width: 68% !important;
+        font: 32px 'Source Sans Pro', Helvetica, sans-serif;
+			}
+		</style>
 	</head>
 	<body>
 		<div class="reveal">
 			<div class="slides">
-				<section>Slide 1</section>
-				<section>Slide 2</section>
+				<section>
+          <h3>KTune : A Tuner Library for Kokkos</h3>
+          <p>Aniket Sen, Bartosz Kostrzewa, Travis Whyte</p>
+          <p style="font-size: 0.4em;">in collaboration with</p>
+          <p>Eric B. Gregory, Stefan Krieg, Giovanni Pederiva, Simon Schlepphorst, Estela Suarez</p>
+          <p style="font-size: 0.6em;">JSC Kokkos User Group Meeting, 25.11.2025</p>
+        </section>
+        <section>
+          <h3>MD Views and Iteration Spaces</h3>
+          <p class="fragment">
+            Kokkos supports multidimensional data structures via Views
+          </p>
+          <pre class="fragment"><code data-trim data-line-numbers><script type="text/template">
+            // 4D View of doubles
+            Kokkos::View<double****> view4d("view4d", dim1, dim2, dim3, dim4);
+          </script></code></pre>
+          <p class="fragment">
+            And parallel iteration spaces via <code>MDRangePolicy</code>
+          </p>
+          <pre class="fragment"><code data-trim data-line-numbers><script type="text/template">
+            // 4D iteration space
+            Kokkos::MDRangePolicy<Kokkos::Rank<4>> policy4d({0,0,0,0}, {dim1, dim2, dim3, dim4});
+          </script></code></pre>
+          <p class="fragment">
+            Finally, perform kernel execution via a parallel dispatch
+          </p>
+          <pre class="fragment"><code data-trim data-line-numbers><script type="text/template">
+            // C = A + B for 4D Views
+            Kokkos::parallel_for("4d_add", policy4d, 
+            KOKKOS_LAMBDA(const int i, const int j, const int k, const int l) {
+              C(i,j,k,l) = A(i,j,k,l) + B(i,j,k,l);
+            });
+          </script></code></pre>
+        </section>
+        <section>
+          <section>
+            <h3>Performance However....</h3>
+            <!-- <p class="fragment">
+              Performance of MDRangePolicy kernels is often suboptimal (especially on the cpu)
+            </p> -->
+            <img class="fragment" src="plots/stream_benchmark_epyc7742_all_ranks_untuned.png" width="800px"/>
+            </section>
+          <section>
+            <p>in the streaming region</p>
+            <img class="fragment" src="plots/stream_benchmark_epyc7742_all_ranks_untuned_zoomed.png" width="700px"/>
+            <p class="fragment">
+              Ideally, all ranks should perform as well as rank 1
+            </p>
+          </section>
+        </section>
+        <section>
+          <h3>Why is this happening?</h3>
+          <p class="fragment">
+            The way Kokkos dispatches parallel workers (by default) is not optimal
+          </p>
+          <p class="fragment">
+            This is done via seting a "tile size" for each dimension of the iteration space
+          </p>
+          <pre class="fragment"><code data-trim data-line-numbers="4"><script type="text/template">
+            // 4D iteration space with tile sizes
+            Kokkos::MDRangePolicy<Kokkos::Rank<4>> policy4d(
+              {0,0,0,0}, {dim1, dim2, dim3, dim4},
+              {tile1, tile2, tile3, tile4}  // tile sizes
+            );
+          </script></code></pre>
+          <h3 class="fragment">What is a good tiling?</h3>
+          <p class="fragment">
+            One can define a "good" tiling based on some heuristics (similar to what Kokkos does internally)
+          </p>
+          <p class="fragment">
+            But the best tiling is application and architecture dependent
+          </p>
+        </section>
+        <section>
+          <h3>Introducing: KTune</h3>
+          <p class="fragment">
+            KTune is a header only library that acts as a wrapper around Kokkos parallel dispatches
+          </p>
+          <p class="fragment">
+            Automatically tunes tile sizes and caches the best configuration for future runs
+          </p>
+          <p class="fragment">
+            Should be able to drop and replace existing code
+          </p>
+          <pre class="fragment"><code data-trim data-line-numbers="2"><script type="text/template">
+            // original Kokkos dispatch
+            Kokkos::parallel_for("4d_add", policy4d, 
+              KOKKOS_LAMBDA(const int i, const int j, const int k, const int l) {
+                C(i,j,k,l) = A(i,j,k,l) + B(i,j,k,l);
+              });
+          </script></code></pre>
+          <pre class="fragment"><code data-trim data-line-numbers="2"><script type="text/template">
+            // KTune dispatch
+            KTune::parallel_for("4d_add", policy4d, 
+              KOKKOS_LAMBDA(const int i, const int j, const int k, const int l) {
+                C(i,j,k,l) = A(i,j,k,l) + B(i,j,k,l);
+              });
+          </script></code></pre>
+        </section>
 			</div>
 		</div>
 
